@@ -1,7 +1,6 @@
 # XMPP Client Implementation :rocket:
 
-Welcome to my XMPP Client Implementation project! 🚀 Built using Python, Flask, and Slixmpp, this project provides an enhanced approach to real-time messaging. Perfect for those stepping into the world of XMPP protocols or seasoned developers interested in an asynchronous Pythonic approach.
-
+Welcome to my XMPP Client Implementation project! 🚀 Built using Python, this project provides an enhanced approach to real-time messaging. Perfect for those stepping into the world of XMPP protocols or seasoned developers interested in an asynchronous Pythonic approach.
 
 ## Objectives 🎯
 
@@ -12,7 +11,7 @@ Welcome to my XMPP Client Implementation project! 🚀 Built using Python, Flask
 
 ## Prerequisites 📋
 
-- Python basics and knowledge of Flask framework.
+- Python programming basics.
 - A knack for messaging protocols, XMPP being at the forefront.
 
 ## Features & Functionalities ✨
@@ -72,11 +71,9 @@ Get started with these simple steps:
 
 Our project relies on these vital components:
 
-- flask
 - slixmpp
 - aioconsole
 - xmpp
-- flask_cors
 
 ## Contributing to Excellence 🤝
 
@@ -88,7 +85,6 @@ Want to contribute? We welcome your input! Here's how:
 4. Commit your changes with meaningful messages.
 5. Push your changes to your fork.
 6. Initiate a pull request to our master branch.
-
 
 ## Acknowledgments 🙌
 
