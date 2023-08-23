@@ -53,7 +53,7 @@ class Client(slixmpp.ClientXMPP):
     async def start(self, event):
         try:
             # Send presence to the server
-            self.send_presence()
+            self.send_presence(pshow="chat", pstatus="Available")
 
             # Get the roster (list of contacts) from the server
             await self.get_roster()
@@ -95,67 +95,87 @@ class Client(slixmpp.ClientXMPP):
             # Print the received message
             if self.room in str(message["from"]):
                 print("{}: {}".format(group_user, message["body"]))
-            else:
-                print(
-                    "New message from user {} in chat room {}: {}".format(
-                        group_user, self.room.split("@")[0], message["body"]
-                    )
+        else:
+            print(
+                "New message from user {} in chat room {}: {}".format(
+                    group_user, self.room.split("@")[0], message["body"]
                 )
+            )
 
     # Asynchronous function to send and receive messages to/from a contact specified by their JID
     async def sendMessage(self):
-        contact_jid = await ainput("Enter the JID of the contact to send a message: 📨")
-        self.contact_chat = contact_jid
+        """
+        Send a message to a contact.
 
+        This method allows the user to send messages to a contact using their JID (Jabber ID).
+        The messages are sent using XMPP protocol.
+
+        Usage:
+        - The user enters the JID of the contact.
+        - Messages can be entered until the user types "exit" to exit the chat.
+        """
+        print("\nSend a message to a contact 📨")
+        print("Note: You don't have to include the domain '@alumchat.xyz'.")
+
+        # Input the JID of the contact
+        contact_jid = await ainput("Enter the JID of the contact to send a message: 📨")
+        contact_jid = f"{contact_jid}@alumchat.xyz"
+        self.chat = contact_jid
+
+        # Extract contact name from the JID
         contact_name = contact_jid.split("@")[0]
         await aprint(f"Message to: {contact_name} 👥")
         await aprint("To exit the chat, type: exit 🚪")
 
         while True:
-            message = await ainput("Enter the message: ✏️")
+            # Input the message
+            message = await ainput("Enter the message: ")
+
             if message == "exit":
+                # Exit the chat if user types "exit"
                 self.chat = ""
                 break
             else:
+                # Send the message using XMPP protocol
                 self.send_message(mto=contact_jid, mbody=message, mtype="chat")
-                print(f"Message sent: {message} 🚀")
 
     async def receiveMessage(self, message):
-        # Extract the message type and contact email from the message
-        msg_type = message["type"]
-        contact_email = message["from"]
-        contact_name = contact_email.split("@")[
-            0
-        ]  # Extract the contact name from the email
-        contact_chat_name = self.contact_chat.split("@")[
-            0
-        ]  # Extract the contact chat name from the email
+        """
+        Receive and process a chat message.
 
-        if msg_type == "chat":  # Check if the message is a chat message
+        Args:
+            message (dict): The message received, containing information like type, body, and sender.
+
+        Note:
+            This method checks if the message is a chat message and handles text and file messages accordingly.
+        """
+        if message["type"] == "chat":  # Check if the message is a chat message
             if message["body"].startswith(
                 "file://"
-            ):  # Check if the message contains a file attachment
-                try:
-                    # Extract file extension and data from the message body
-                    _, file_info = message["body"].split("://", 1)
-                    file_extension, file_data = file_info.split("://", 1)
-                    data_decoded = base64.b64decode(file_data)
+            ):  # Check if the message is a file message
+                file_content = message["body"].split("://")
+                file_extension = file_content[1]
+                file_data = file_content[2]
+                decoded_file_data = base64.b64decode(file_data)
+                file_path = f"hola.{file_extension}"
 
-                    # Create a filename for the received file
-                    filename = f"file_received_from_{contact_name}.{file_extension}"
-                    with open(filename, "wb") as file:
-                        file.write(data_decoded)  # Write the decoded data to the file
+                # Write the decoded file data to a file
+                with open(file_path, "wb") as file_to_write:
+                    file_to_write.write(decoded_file_data)
 
-                    print("📂 File received and downloaded")
-                except Exception as err:
-                    print("❌ Error decoding file information")
-            else:  # If the message is not a file attachment
-                if contact_name == contact_chat_name:
-                    print(f"\n💬 Message from {contact_name}: {message['body']}")
+                print(
+                    f"\n📁 {str(message['from']).split('/')[0]} has sent you a file: {file_path}\n"
+                )
+            else:
+                emitter = str(message["from"])
+                actual_emitter = emitter.split("/")[0]
+
+                if (
+                    actual_emitter == self.chat
+                ):  # Check if the message is from the current chat
+                    print(f"\n\n{actual_emitter}: {message['body']}")
                 else:
-                    print(
-                        f"\n💬 Message from another conversation with {contact_name}: {message['body']}"
-                    )
+                    print(f"\n🔔 New message from {actual_emitter}\n")
 
     def presenceMenu(self):
         """
@@ -183,15 +203,16 @@ class Client(slixmpp.ClientXMPP):
             option = int(input("Enter the status you want: "))
             print("Your status has been updated")
             print(f"Status: {options[option][1]}")
-            # return options.get(option, (None, None))
-            return options[option][0], options[option][1]
+            status_code, status_text = options[option]
+            print(status_code, status_text)
+            self.send_presence(pshow=status_code, pstatus=status_text)
+            return status_code, status_text
         except ValueError:
             return None, None
 
     # Asynchronous function to display contacts' presence and status information
     async def showContacts(self):
         contacts = list(self.client_roster.keys())
-
         if len(contacts) == 1 and contacts[0] == self.boundjid.bare:
             print("\nYou have no contacts 🚫")
             return
@@ -312,12 +333,17 @@ class Client(slixmpp.ClientXMPP):
     # Asynchronous function to join a chat room with the specified name and handle messages
     async def joinChatRoom(self, name_room):
         self.chatroom = name_room
+        self.chatroom = f"{self.chatroom}@alumchat.xyz"
         self.room_nickname = self.boundjid.user
 
-        print("Messages from the room: 📜")
+        # print("Messages from the room: 📜")
 
         try:
-            await self.plugin["xep_0045"].join_muc(name_room, self.room_nickname)
+            print(f"Joining the room: {name_room} 🚪")
+            await self.plugin["xep_0045"].join_muc(
+                room=name_room, nick=self.room_nickname
+            )
+            print(f"Joined the room: {name_room} 🚪")
         except IqError as err:
             print(f"Error while entering the chat room: {err.iq['error']['text']} ❌")
             return  # Return early if there's an error, so the following messages aren't printed
@@ -330,13 +356,13 @@ class Client(slixmpp.ClientXMPP):
         await aprint("To exit the chat, type: exit chat 🚪")
 
         while True:
-            message = await ainput("Enter the message: ✏️")
-            if message == "exit chat":
+            message = await ainput("Enter the message: ")
+            if message == "exit":
                 self.chat = ""
                 self.exitChatRoom()
                 break
             else:
-                self.send_message(self.chatroom, message, mtype="groupchat")
+                self.send_message(mto=self.chatroom, mbody=message, mtype="groupchat")
 
     async def sendFiles(self):
         """
@@ -350,7 +376,7 @@ class Client(slixmpp.ClientXMPP):
         """
 
         # Prompt user for the JID of the contact to send the file to
-        contact_jid = await ainput("Enter the JID of the contact to send a file to: 📂")
+        contact_jid = input("Enter the JID of the contact to send a file to: 📂")
 
         # Prompt user for the path of the file to send
         file_path = input("Add the path of the file: ")
@@ -367,6 +393,8 @@ class Client(slixmpp.ClientXMPP):
 
         # Create the message in a specific format, embedding the file data
         message = f"file://{file_extension}://{encoded_data}"
+
+        print(message)
 
         # Send the message using a pre-defined method `self.send_message`
         self.send_message(mto=contact_jid, mbody=message, mtype="chat")
@@ -402,7 +430,7 @@ class Client(slixmpp.ClientXMPP):
                     await self.createChatRoom(room_name)
                 case 2:
                     room_name = input("Enter the name of the chat room: ")
-                    await self.joinChatRoom()
+                    await self.joinChatRoom(room_name)
                 case 3:
                     menu_active = False
 

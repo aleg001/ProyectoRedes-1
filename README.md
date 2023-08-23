@@ -64,7 +64,7 @@ Get started with these simple steps:
 
 4. **Run the Application**
     ```bash
-    python main.py
+    python App.py
     ```
 
 ## Dependencies & Essential Modules 📦
